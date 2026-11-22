@@ -1,0 +1,274 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Private profile and reading preferences for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "displayName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "maxLength": 254
+        },
+        "photoURL": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "theme": {
+          "type": "string",
+          "enum": ["light", "dark"]
+        },
+        "arabicFontSize": {
+          "type": "string",
+          "enum": ["sm", "md", "lg", "xl"]
+        },
+        "qariId": {
+          "type": "string",
+          "enum": ["01", "02", "03", "04", "05", "06"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["uid", "displayName", "email", "theme", "arabicFontSize", "qariId", "createdAt", "updatedAt"]
+    },
+    "CollectionFolder": {
+      "title": "CollectionFolder",
+      "description": "User-defined bookmark folder inside Koleksi Saya.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "name", "description", "createdAt", "updatedAt"]
+    },
+    "BookmarkItem": {
+      "title": "BookmarkItem",
+      "description": "A saved Qur'an verse or Hadith reference belonging to a user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["quran", "hadith"]
+        },
+        "refKey": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120,
+          "pattern": "^[a-zA-Z0-9_:\\-]+$"
+        },
+        "folderId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "arabicText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "translationText": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8000
+        },
+        "sourceLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "surahNumber": {
+          "type": "integer"
+        },
+        "ayahNumber": {
+          "type": "integer"
+        },
+        "hadithBook": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "hadithNumber": {
+          "type": "integer"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "type",
+        "refKey",
+        "folderId",
+        "title",
+        "subtitle",
+        "arabicText",
+        "translationText",
+        "sourceLabel",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudyNote": {
+      "title": "StudyNote",
+      "description": "Personal reflection note linked optionally to a Qur'an verse or Hadith.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 10000
+        },
+        "linkedType": {
+          "type": "string",
+          "enum": ["none", "quran", "hadith"]
+        },
+        "linkedRefKey": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "linkedLabel": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "tags": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "userId",
+        "title",
+        "content",
+        "linkedType",
+        "linkedRefKey",
+        "linkedLabel",
+        "tags",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "SearchHistoryItem": {
+      "title": "SearchHistoryItem",
+      "description": "Recent search query saved for an authenticated user.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "query": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "scope": {
+          "type": "string",
+          "enum": ["all", "quran", "hadith"]
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["userId", "query", "scope", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and preferences; strictly restricted to the owning user."
+    },
+    "/users/{userId}/folders/{folderId}": {
+      "schema": { "$ref": "#/entities/CollectionFolder" },
+      "description": "Bookmark folders owned by {userId}."
+    },
+    "/users/{userId}/bookmarks/{bookmarkId}": {
+      "schema": { "$ref": "#/entities/BookmarkItem" },
+      "description": "Saved Qur'an verses and Hadiths owned by {userId}."
+    },
+    "/users/{userId}/notes/{noteId}": {
+      "schema": { "$ref": "#/entities/StudyNote" },
+      "description": "Personal tadabbur and study notes owned by {userId}."
+    },
+    "/users/{userId}/searchHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/SearchHistoryItem" },
+      "description": "Recent search queries owned by {userId}."
+    }
+  }
+}

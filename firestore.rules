@@ -1,0 +1,295 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================
+    // Hardened Primitives
+    // =========================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function hasParentUser(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId));
+    }
+
+    function isValidTagList(tags) {
+      return tags is list
+        && tags.size() <= 8
+        && (tags.size() == 0 || (tags[0] is string && tags[0].size() >= 1 && tags[0].size() <= 40));
+    }
+
+    // =========================================================
+    // Validation Blueprints (Anti-Update-Gap)
+    // =========================================================
+    function isValidUserProfile(data, userId) {
+      return data.keys().hasAll([
+          'uid', 'displayName', 'email', 'theme', 'arabicFontSize', 'qariId', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'displayName', 'email', 'photoURL', 'theme', 'arabicFontSize', 'qariId', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == request.auth.uid && data.uid == userId && isValidId(data.uid)
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 120
+        && data.email is string && data.email.size() >= 3 && data.email.size() <= 254
+        && (!('photoURL' in data) || (data.photoURL is string && data.photoURL.size() <= 500))
+        && data.theme is string && data.theme in ['light', 'dark']
+        && data.arabicFontSize is string && data.arabicFontSize in ['sm', 'md', 'lg', 'xl']
+        && data.qariId is string && data.qariId in ['01', '02', '03', '04', '05', '06']
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidFolder(data, userId) {
+      return data.keys().hasAll(['userId', 'name', 'description', 'createdAt', 'updatedAt'])
+        && data.keys().hasOnly(['userId', 'name', 'description', 'createdAt', 'updatedAt'])
+        && data.userId is string && data.userId == request.auth.uid && data.userId == userId
+        && data.name is string && data.name.size() >= 1 && data.name.size() <= 80
+        && data.description is string && data.description.size() <= 240
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidBookmark(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'type', 'refKey', 'folderId', 'title', 'subtitle',
+          'arabicText', 'translationText', 'sourceLabel', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'type', 'refKey', 'folderId', 'title', 'subtitle',
+          'arabicText', 'translationText', 'sourceLabel',
+          'surahNumber', 'ayahNumber', 'hadithBook', 'hadithNumber',
+          'createdAt', 'updatedAt'
+        ])
+        && data.userId is string && data.userId == request.auth.uid && data.userId == userId
+        && data.type is string && data.type in ['quran', 'hadith']
+        && data.refKey is string && data.refKey.size() >= 1 && data.refKey.size() <= 120 && data.refKey.matches('^[a-zA-Z0-9_:\\-]+$')
+        && data.folderId is string && data.folderId.size() <= 128
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.subtitle is string && data.subtitle.size() <= 200
+        && data.arabicText is string && data.arabicText.size() >= 1 && data.arabicText.size() <= 8000
+        && data.translationText is string && data.translationText.size() >= 1 && data.translationText.size() <= 8000
+        && data.sourceLabel is string && data.sourceLabel.size() >= 1 && data.sourceLabel.size() <= 160
+        && (!('surahNumber' in data) || (data.surahNumber is int && data.surahNumber >= 1 && data.surahNumber <= 114))
+        && (!('ayahNumber' in data) || (data.ayahNumber is int && data.ayahNumber >= 1 && data.ayahNumber <= 286))
+        && (!('hadithBook' in data) || (data.hadithBook is string && data.hadithBook.size() <= 40))
+        && (!('hadithNumber' in data) || (data.hadithNumber is int && data.hadithNumber >= 1 && data.hadithNumber <= 50000))
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidNote(data, userId) {
+      return data.keys().hasAll([
+          'userId', 'title', 'content', 'linkedType', 'linkedRefKey', 'linkedLabel', 'tags', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'userId', 'title', 'content', 'linkedType', 'linkedRefKey', 'linkedLabel', 'tags', 'createdAt', 'updatedAt'
+        ])
+        && data.userId is string && data.userId == request.auth.uid && data.userId == userId
+        && data.title is string && data.title.size() >= 1 && data.title.size() <= 160
+        && data.content is string && data.content.size() >= 1 && data.content.size() <= 10000
+        && data.linkedType is string && data.linkedType in ['none', 'quran', 'hadith']
+        && data.linkedRefKey is string && data.linkedRefKey.size() <= 120
+        && data.linkedLabel is string && data.linkedLabel.size() <= 200
+        && isValidTagList(data.tags)
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSearchHistory(data, userId) {
+      return data.keys().hasAll(['userId', 'query', 'scope', 'createdAt'])
+        && data.keys().hasOnly(['userId', 'query', 'scope', 'createdAt'])
+        && data.userId is string && data.userId == request.auth.uid && data.userId == userId
+        && data.query is string && data.query.size() >= 1 && data.query.size() <= 200
+        && data.scope is string && data.scope in ['all', 'quran', 'hadith']
+        && data.createdAt is timestamp;
+    }
+
+    // =========================================================
+    // Collection Rules
+    // =========================================================
+    match /users/{userId} {
+      // PII strictly isolated to owning user; never allow collection-wide listing
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser()
+        && isOwner(userId)
+        && isValidId(userId)
+        && isValidUserProfile(incoming(), userId)
+        && incoming().uid == existing().uid
+        && incoming().email == existing().email
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && (
+          // Action: Update Profile Info
+          incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'updatedAt'])
+          // Action: Update Reading Preferences
+          || incoming().diff(existing()).affectedKeys().hasOnly(['theme', 'arabicFontSize', 'qariId', 'updatedAt'])
+          // Action: Update Full Profile & Preferences
+          || incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoURL', 'theme', 'arabicFontSize', 'qariId', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedUser() && isOwner(userId) && isValidId(userId);
+
+      // Subcollection: Folders
+      match /folders/{folderId} {
+        allow get: if isOwner(userId) && isValidId(folderId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(folderId)
+          && isValidFolder(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(folderId)
+          && isValidFolder(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId)
+          && (
+            // Action: Rename or Edit Description
+            incoming().diff(existing()).affectedKeys().hasOnly(['name', 'description', 'updatedAt'])
+          );
+
+        allow delete: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(folderId)
+          && existing().userId == request.auth.uid
+          && hasParentUser(userId);
+      }
+
+      // Subcollection: Bookmarks
+      match /bookmarks/{bookmarkId} {
+        allow get: if isOwner(userId) && isValidId(bookmarkId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(bookmarkId)
+          && isValidBookmark(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(bookmarkId)
+          && isValidBookmark(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().type == existing().type
+          && incoming().refKey == existing().refKey
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId)
+          && (
+            // Action: Move Bookmark to Folder
+            incoming().diff(existing()).affectedKeys().hasOnly(['folderId', 'updatedAt'])
+          );
+
+        allow delete: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(bookmarkId)
+          && existing().userId == request.auth.uid
+          && hasParentUser(userId);
+      }
+
+      // Subcollection: Notes
+      match /notes/{noteId} {
+        allow get: if isOwner(userId) && isValidId(noteId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(noteId)
+          && isValidNote(incoming(), userId)
+          && incoming().createdAt == request.time
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(noteId)
+          && isValidNote(incoming(), userId)
+          && incoming().userId == existing().userId
+          && incoming().createdAt == existing().createdAt
+          && incoming().updatedAt == request.time
+          && hasParentUser(userId)
+          && (
+            // Action: Edit Note Content & Metadata
+            incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'tags', 'updatedAt'])
+            // Action: Update Linked Reference
+            || incoming().diff(existing()).affectedKeys().hasOnly(['linkedType', 'linkedRefKey', 'linkedLabel', 'updatedAt'])
+            // Action: Full Note Update
+            || incoming().diff(existing()).affectedKeys().hasOnly(['title', 'content', 'linkedType', 'linkedRefKey', 'linkedLabel', 'tags', 'updatedAt'])
+          );
+
+        allow delete: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(noteId)
+          && existing().userId == request.auth.uid
+          && hasParentUser(userId);
+      }
+
+      // Subcollection: Search History
+      match /searchHistory/{historyId} {
+        allow get: if isOwner(userId) && isValidId(historyId) && existing().userId == request.auth.uid;
+        allow list: if isOwner(userId) && resource.data.userId == request.auth.uid;
+
+        allow create: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(historyId)
+          && isValidSearchHistory(incoming(), userId)
+          && incoming().createdAt == request.time
+          && hasParentUser(userId);
+
+        allow update: if false;
+
+        allow delete: if isVerifiedUser()
+          && isOwner(userId)
+          && isValidId(historyId)
+          && existing().userId == request.auth.uid
+          && hasParentUser(userId);
+      }
+    }
+  }
+}

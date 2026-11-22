@@ -1,0 +1,6 @@
+{
+  "name": "QUR'AN & HADIS – Integrated Search",
+  "description": "Platform pencarian terintegrasi ayat Al-Qur'an dan hadis shahih Kutubus Sittah dengan terjemahan Indonesia, transliterasi, tafsir Kemenag RI, audio murottal, koleksi pribadi, dan catatan tadabbur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
